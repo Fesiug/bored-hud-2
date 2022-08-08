@@ -138,15 +138,17 @@ end
 -- HUDPaint, the big fish!
 do
 	hook.Add("HUDPaint", "BH2_HUDPaint", function()
-		local test = {
-			pos_x = 200,
-			pos_y = 200,
-			size_w = 300,
-			size_h = 100,
-			border = 8,
-			color = "main"
-		}
-		BH2.RectangleBordered(test)
+		if GetConVar("bh2"):GetBool() then
+			local test = {
+				pos_x = 200,
+				pos_y = 200,
+				size_w = 300,
+				size_h = 100,
+				border = 8,
+				color = "main"
+			}
+			BH2.RectangleBordered(test)
+		end
 	end)
 end
 
@@ -161,6 +163,6 @@ do
 	}
 
 	hook.Add("HUDShouldDraw", "BH2_HUDShouldDraw", function(name)
-		if hide[name] then return false end
+		if GetConVar("bh2"):GetBool() and hide[name] then return false end
 	end)
 end

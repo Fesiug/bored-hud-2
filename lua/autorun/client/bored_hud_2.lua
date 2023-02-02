@@ -30,12 +30,38 @@ CreateClientConVar("bh2_ammo_pos_y", 0, true, false, "Ammo Y")
 local BH2 = {}
 
 BH2.Palette = {
-	["main"] = { 200, 200, 200, 255 },
-	["shadow"] = { 0, 0, 0, 100 },
+	["main"] = Color( 255, 255, 255, 255 ),
+	["progress"] = Color( 200, 255, 200, 255 ),
+	["shadow"] = Color( 0, 0, 0, 100 ),
 }
 
 -- Prerequisites
 do
+	-- Fonts
+	local function s(size)
+		return math.Round( size * ( ScrH() / 480 ) )
+	end
+	local sizes = {
+		["Bahnschrift"] = {
+			14,
+			18,
+			24,
+			36,
+			72,
+		}
+	}
+	local function generate()
+		for name, namedata in pairs(sizes) do
+			for i, size in ipairs(namedata) do
+				surface.CreateFont( "BH2_" .. name .. "_" .. size, {
+					font = name,
+					size = s(size),
+					weight = 0,
+				} )
+			end
+		end
+	end
+	generate()
 	local COLOR_HELP	= Color(100, 0, 0, 60)
 	local CORN_8	= surface.GetTextureID( "gui/corner8" )
 	local CORN_16	= surface.GetTextureID( "gui/corner16" )
@@ -47,17 +73,21 @@ do
 	local IORN_32	= surface.GetTextureID( "gui/bh2_invert/corner32" )
 	local IORN_64	= surface.GetTextureID( "gui/bh2_invert/corner64" )
 	local IORN_512	= surface.GetTextureID( "gui/bh2_invert/corner512" )
+	local w, h = ScrW(), ScrH()
+	local b = s(10)
+	local bar_w, bar_h = s(180), s(20)
+	local sh = s(2)
 	BH2.GetPallete = function(name, alpha)
 		assert( name, "GetPallete: No input!" )
 		alpha = alpha or 1
 		if IsColor(name) then
-			return { name.r, name.g, name.b, name.a * alpha }
+			return Color( name.r, name.g, name.b, name.a * alpha )
 		end
 
 		name = BH2.Palette[ name ]
 		assert( name, "GetPallete: Palette doesn't exist!" )
 
-		return { name[1], name[2], name[3], name[4] * alpha }
+		return Color( name.r, name.g, name.b, name.a * alpha )
 	end
 	BH2.RectangleBordered = function(feed)
 		local x, y = feed.pos_x, feed.pos_y
@@ -119,41 +149,50 @@ do
 		surface.DrawTexturedRectUV( x + bo, y + h - ( bo * 2 ), bo, bo, 0, 1, 1, 0 )
 		-- Bottom right
 		surface.DrawTexturedRectUV( x + w - ( bo * 2 ), y + h - ( bo * 2 ), bo, bo, 1, 1, 0, 0 )
-
 	end
-end
-
--- Fonts
-do
-	local sizes = {
-		6,
-		8,
-		10,
-		12,
-		14,
-		16,
-	}
-end
-
--- HUDPaint, the big fish!
-do
+	BH2.RectangleBorderedShadow = function(feed)
+		local feed2 = table.Copy(feed)
+		feed2.pos_x = feed.pos_x + sh
+		feed2.pos_y = feed.pos_y + sh
+		feed2.color = "shadow"
+		BH2.RectangleBordered(feed2)
+		BH2.RectangleBordered(feed)
+	end
+	BH2.Text = function(feed)
+		draw.SimpleText( feed.text, feed.font, feed.pos_x, feed.pos_y, BH2.GetPallete(feed.color), feed.align_x, feed.align_y )
+	end
+	BH2.TextShadow = function(feed)
+	end
+	-- Where the magic happens
 	hook.Add("HUDPaint", "BH2_HUDPaint", function()
 		if GetConVar("bh2"):GetBool() then
-			local test = {
-				pos_x = 200,
-				pos_y = 200,
-				size_w = 300,
-				size_h = 100,
-				border = 8,
+			local bar = {
+				pos_x = b,
+				pos_y = h - b - bar_h,
+				size_w = bar_w,
+				size_h = bar_h,
+				border = s(2),
 				color = "main"
 			}
-			BH2.RectangleBordered(test)
+			BH2.RectangleBorderedShadow(bar)
+			local tess = {
+				text = "123",
+				font = "BH2_Bahnschrift_36",
+				pos_x = b + (bar_w*0.2),
+				pos_y = h - b - bar_h - s(16),
+				color = "main",
+				align_x = TEXT_ALIGN_CENTER,
+				align_y = TEXT_ALIGN_CENTER,
+			}
+			BH2.TextShadow(tess)
+			tess.pos_y = 0
+			tess.text = "HEALTH"
+			BH2.TextShadow(tess)
+			--draw.SimpleText( "100", "BH2_Bahnschrift_36", b + (bar_w*0.2), h - b - bar_h - s(16), BH2.GetPallete("main"), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
+			--draw.SimpleText( "HEALTH", "BH2_Bahnschrift_12", b + (bar_w*0.2), h - b - bar_h - s(32), BH2.GetPallete("main"), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
 		end
 	end)
-end
-
--- Don't draw the HL2 HUD
-do
+	-- Don't draw the HL2 HUD
 	local hide = {
 		["CHudHealth"] = true,
 		["CHudBattery"] = true,

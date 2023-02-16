@@ -60,7 +60,7 @@ do
 	end
 	local sizes = {
 		["Bahnschrift"] = {
-			14,
+			12,
 			18,
 			24,
 			36,

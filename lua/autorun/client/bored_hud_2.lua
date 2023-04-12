@@ -401,24 +401,58 @@ do
 				BH2.TextShadow(tess)
 
 				-- Reserve
-				local tess = {
-					text = p:GetAmmoCount(we:GetPrimaryAmmoType()),
-					font = bh2_font( "Bahnschrift", 32 ),
-					font_shadow = bh2_font_blur( "Bahnschrift", 32 ),
-					pos_x = w - dx() - b - (bar_w*0.5),
-					pos_y = dy() + h - b - bar_h - s(18),
-					color = "main",
-					sh = s(2),
-					align_x = 0.5,
-					align_y = 0.5,
-				}
-				BH2.TextShadow(tess)
-				tess.pos_y = dy() + h - b - bar_h - s(32)
-				tess.text = "RESERVE"
-				tess.sh = s(1)
-				tess.font = bh2_font( "Bahnschrift", 10 )
-				tess.font_shadow = bh2_font_blur( "Bahnschrift", 10 )
-				BH2.TextShadow(tess)
+				if we:GetPrimaryAmmoType() > -1 then
+					local tess = {
+						text = p:GetAmmoCount(we:GetPrimaryAmmoType()),
+						font = bh2_font( "Bahnschrift", 32 ),
+						font_shadow = bh2_font_blur( "Bahnschrift", 32 ),
+						pos_x = w - dx() - b - (bar_w*0.5),
+						pos_y = dy() + h - b - bar_h - s(18),
+						color = "main",
+						sh = s(2),
+						align_x = 0.5,
+						align_y = 0.5,
+					}
+					BH2.TextShadow(tess)
+					tess.pos_y = dy() + h - b - bar_h - s(32)
+					tess.text = "RESERVE"
+					tess.sh = s(1)
+					tess.font = bh2_font( "Bahnschrift", 10 )
+					tess.font_shadow = bh2_font_blur( "Bahnschrift", 10 )
+					BH2.TextShadow(tess)
+
+					-- Ammo type
+					local tess = {
+						text = language.GetPhrase( ( game.GetAmmoName( we:GetPrimaryAmmoType() ) or "" ) .. "_ammo" ),
+						font = bh2_font( "Bahnschrift", 10 ),
+						font_shadow = bh2_font_blur( "Bahnschrift", 10 ),
+						pos_x = w - dx() - b - (bar_w*0.8),
+						pos_y = dy() + h - b - bar_h - s(14),
+						color = "main",
+						sh = s(1),
+						align_x = 0.5,
+						align_y = 0.5,
+					}
+					BH2.TextShadow(tess)
+				end
+				local fmn = false
+				if we.GetFiremodeName then
+					fmn = we:GetFiremodeName()
+				end
+				if fmn then
+					local tess = {
+						text = fmn,
+						font = bh2_font( "Bahnschrift", 10 ),
+						font_shadow = bh2_font_blur( "Bahnschrift", 10 ),
+						pos_x = w - dx() - b - (bar_w*0.8),
+						pos_y = dy() + h - b - bar_h - s(24),
+						color = "main",
+						sh = s(1),
+						align_x = 0.5,
+						align_y = 0.5,
+					}
+					BH2.TextShadow(tess)
+				end
 			end
 		end
 	end)

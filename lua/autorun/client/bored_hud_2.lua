@@ -260,20 +260,20 @@ do
 		feed2.pos_y = feed.pos_y + sh
 		feed2.color = "shadow"
 		BH2.Rectangle( feed2 )
-		
-		local bo = feed.border
-		surface.SetDrawColor( BH2.GetPalette( "main" ) )
-		local prog = {
-			pos_x = feed.pos_x + bo,
-			pos_y = feed.pos_y + bo,
-			size_w = (feed.size_w - (bo*2)) * feed.progress,
-			size_h = (feed.size_h - (bo*2)),
-			border = feed.border,
-			color = "main",
-		}
-		BH2.Rectangle( prog )
+			
+		if feed.progress > 0 then
+			local bo = feed.border
+			local prog = {
+				pos_x = feed.pos_x + bo,
+				pos_y = feed.pos_y + bo,
+				size_w = (feed.size_w - (bo*2)) * feed.progress,
+				size_h = (feed.size_h - (bo*2)),
+				border = bo,
+				color = "main",
+			}
+			BH2.Rectangle( prog )
+		end
 		BH2.RectangleBordered( feed )
-
 	end
 	BH2.Text = function(feed)
 		surface.SetFont( feed.font )

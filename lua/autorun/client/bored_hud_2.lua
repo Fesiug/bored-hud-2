@@ -36,6 +36,8 @@
 	CreateClientConVar("bh2_dead_x", 0, true, false, "Deadzone X")
 	CreateClientConVar("bh2_dead_y", 0, true, false, "Deadzone Y")
 
+	CreateClientConVar("bh2_shad_blur", 0, true, false, "Blur shadow instead of drop shadow", 0, 1)
+
 	CreateClientConVar("bh2_health", 1, true, false, "Enable the Health", 0, 1)
 	CreateClientConVar("bh2_health_pos_x", 0, true, false, "Health X")
 	CreateClientConVar("bh2_health_pos_y", 0, true, false, "Health Y")
@@ -51,34 +53,79 @@ BH2.Palette = {
 	["progress"] = Color( 200, 255, 200, 255 ),
 	["shadow"] = Color( 0, 0, 0, 100 ),
 }
+local depeded = Color( 0, 0, 0, 255 )
 
 -- Prerequisites
 do
 	-- Fonts
+	local cv_scale = GetConVar("bh2_scale")
+	local cv_blur = GetConVar("bh2_shad_blur")
 	local function s(size)
-		return math.Round( size * ( ScrH() / 480 ) )
+		return math.Round( size * ( ScrH() / 480 ) * cv_scale:GetFloat() )
 	end
-	local sizes = {
-		["Bahnschrift"] = {
-			12,
-			18,
-			24,
-			36,
-			72,
-		}
+	local b = s(10)
+	local bar_w, bar_h = s(180), s(10)
+	local bar_hs = s(5)
+	local sh = s(2)
+	function bh2_regensize()
+		b = s(10)
+		bar_w, bar_h = s(180), s(10)
+		bar_hs = s(5)
+		sh = s(2)
+	end
+	
+	local genfonts = {
 	}
-	local function generate()
-		for name, namedata in pairs(sizes) do
-			for i, size in ipairs(namedata) do
-				surface.CreateFont( "BH2_" .. name .. "_" .. size, {
-					font = name,
-					size = s(size),
-					weight = 0,
-				} )
+	local genfonts_blur = {
+	}
+	cvars.AddChangeCallback("bh2_scale", function()
+		bh2_regensize()
+		genfonts = {}
+		genfonts_blur = {}
+	end)
+	bh2_regensize()
+	function bh2_font( name, size )
+		local this = "BH2_" .. name .. "_" .. size
+		if genfonts[name] then
+			-- print("Font " .. name .. " exists, checking for size " .. size)
+			if genfonts[name][size] then
+				-- print("Font " .. name .. " at size " .. size .. " exists")
+				return this
 			end
+		else
+			genfonts[name] = {}
 		end
+		surface.CreateFont( this, {
+			font = name,
+			size = s(size),
+			weight = 0,
+			antialias = true,
+		})
+		genfonts[name][size] = true
+		return this
 	end
-	generate()
+	function bh2_font_blur( name, size )
+		local this = "BH2_" .. name .. "_Blur_" .. size
+		if genfonts_blur[name] then
+			-- print("Font " .. name .. " exists, checking for size " .. size)
+			if genfonts_blur[name][size] then
+				-- print("Font " .. name .. " at size " .. size .. " exists")
+				return this
+			end
+		else
+			genfonts_blur[name] = {}
+		end
+		surface.CreateFont( this, {
+			font = name,
+			size = s(size),
+			weight = 0,
+			antialias = true,
+			blursize = 4
+		})
+		genfonts_blur[name][size] = true
+		return this
+	end
+
 	local COLOR_HELP	= Color(100, 0, 0, 60)
 	local CORN_8	= surface.GetTextureID( "gui/corner8" )
 	local CORN_16	= surface.GetTextureID( "gui/corner16" )
@@ -91,9 +138,13 @@ do
 	local IORN_64	= surface.GetTextureID( "gui/bh2_invert/corner64" )
 	local IORN_512	= surface.GetTextureID( "gui/bh2_invert/corner512" )
 	local w, h = ScrW(), ScrH()
-	local b = s(10)
-	local bar_w, bar_h = s(180), s(10)
-	local sh = s(2)
+	local cv_deadx, cv_deady = GetConVar("bh2_dead_x"), GetConVar("bh2_dead_y")
+	local function dx()
+		return w * (cv_deadx:GetFloat()) * 0.5
+	end
+	local function dy()
+		return h * (cv_deady:GetFloat()) * -0.5
+	end
 	BH2.GetPalette = function(name, alpha)
 		assert( name, "GetPalette: No input!" )
 		alpha = alpha or 1
@@ -108,6 +159,11 @@ do
 			thing.g = GetConVar( "bh2_col_main_g" ):GetInt()
 			thing.b = GetConVar( "bh2_col_main_b" ):GetInt()
 			thing.a = GetConVar( "bh2_col_main_a" ):GetInt() * alpha
+		elseif name == "shadow" then
+			thing.r = GetConVar( "bh2_col_shad_r" ):GetInt()
+			thing.g = GetConVar( "bh2_col_shad_g" ):GetInt()
+			thing.b = GetConVar( "bh2_col_shad_b" ):GetInt()
+			thing.a = GetConVar( "bh2_col_shad_a" ):GetInt() * alpha
 		else
 			name = BH2.Palette[ name ]
 			thing = Color( name.r, name.g, name.b, name.a * alpha )
@@ -190,6 +246,7 @@ do
 	end
 	BH2.RectangleBorderedShadow = function(feed)
 		local feed2 = table.Copy(feed)
+		local sh = feed.sh or sh
 		feed2.pos_x = feed.pos_x + sh
 		feed2.pos_y = feed.pos_y + sh
 		feed2.color = "shadow"
@@ -198,6 +255,7 @@ do
 	end
 	BH2.ProgressBar = function(feed)
 		local feed2 = table.Copy(feed)
+		local sh = feed.sh or sh
 		feed2.pos_x = feed.pos_x + sh
 		feed2.pos_y = feed.pos_y + sh
 		feed2.color = "shadow"
@@ -218,13 +276,27 @@ do
 
 	end
 	BH2.Text = function(feed)
-		draw.SimpleText( feed.text, feed.font, feed.pos_x, feed.pos_y, BH2.GetPalette(feed.color), feed.align_x, feed.align_y )
+		surface.SetFont( feed.font )
+		local jx, jy = surface.GetTextSize( feed.text )
+		jx = jx * (feed.align_x or 0)
+		jy = jy * (feed.align_y or 0)
+
+		surface.SetFont( feed.font_shadow or feed.font )
+		surface.SetTextPos( feed.pos_x - jx, feed.pos_y - jy )
+		surface.SetTextColor( BH2.GetPalette( feed.color ) )
+		surface.DrawText( feed.text )
 	end
 	BH2.TextShadow = function(feed)
 		local feed2 = table.Copy(feed)
-		feed2.pos_x = feed.pos_x + sh
-		feed2.pos_y = feed.pos_y + sh
-		feed2.color = "shadow"
+		local sh = feed.sh or sh
+		feed2.color = depeded
+		if !cv_blur:GetBool() then
+			feed2.pos_x = feed.pos_x + sh
+			feed2.pos_y = feed.pos_y + sh
+			feed2.font_shadow = false
+			feed2.color = "shadow"
+		end
+		feed.font_shadow = false
 		BH2.Text(feed2)
 		BH2.Text(feed)
 	end
@@ -232,32 +304,122 @@ do
 	hook.Add("HUDPaint", "BH2_HUDPaint", function()
 		local p = LocalPlayer()
 		if GetConVar("bh2"):GetBool() then
+			-- Health
 			local bar = {
-				pos_x = b,
-				pos_y = h - b - bar_h,
+				pos_x = dx() + b,
+				pos_y = dy() + h - b - bar_h,
 				size_w = bar_w,
 				size_h = bar_h,
-				border = s(2),
+				border = s(1.5),
 				color = "main",
 				progress = p:Health()/p:GetMaxHealth(),
 			}
 			BH2.ProgressBar(bar)
 			local tess = {
 				text = p:Health(),
-				font = "BH2_Bahnschrift_36",
-				pos_x = b + (bar_w*0.15),
-				pos_y = h - b - bar_h - s(18),
+				font = bh2_font( "Bahnschrift", 36 ),
+				font_shadow = bh2_font_blur( "Bahnschrift", 36 ),
+				pos_x = dx() + b + (bar_w*0.15),
+				pos_y = dy() + h - b - bar_h - s(18),
 				color = "main",
-				align_x = TEXT_ALIGN_CENTER,
-				align_y = TEXT_ALIGN_CENTER,
+				sh = s(2),
+				align_x = 0.5,
+				align_y = 0.5,
 			}
 			BH2.TextShadow(tess)
-			tess.pos_y = h - b - bar_h - s(34)
+			tess.pos_y = dy() + h - b - bar_h - s(34)
 			tess.text = "HEALTH"
-			tess.font = "BH2_Bahnschrift_12"
+			tess.sh = s(1)
+			tess.font = bh2_font( "Bahnschrift", 12 )
+			tess.font_shadow = bh2_font_blur( "Bahnschrift", 12 )
 			BH2.TextShadow(tess)
-			--draw.SimpleText( "100", "BH2_Bahnschrift_36", b + (bar_w*0.2), h - b - bar_h - s(16), BH2.GetPalette("main"), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
-			--draw.SimpleText( "HEALTH", "BH2_Bahnschrift_12", b + (bar_w*0.2), h - b - bar_h - s(32), BH2.GetPalette("main"), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
+
+			-- Armor
+			local bar = {
+				pos_x = dx() + b,
+				pos_y = dy() + h - b + s(2),
+				size_w = bar_w,
+				size_h = bar_hs,
+				border = s(1.5),
+				color = "main",
+				progress = p:Armor()/p:GetMaxArmor(),
+			}
+			BH2.ProgressBar(bar)
+			local tess = {
+				text = p:Armor(),
+				font = bh2_font( "Bahnschrift", 32 ),
+				font_shadow = bh2_font_blur( "Bahnschrift", 32 ),
+				pos_x = dx() + b + (bar_w*0.5),
+				pos_y = dy() + h - b - bar_h - s(18),
+				color = "main",
+				sh = s(2),
+				align_x = 0.5,
+				align_y = 0.5,
+			}
+			BH2.TextShadow(tess)
+			tess.pos_y = dy() + h - b - bar_h - s(32)
+			tess.text = "ARMOR"
+			tess.sh = s(1)
+			tess.font = bh2_font( "Bahnschrift", 10 )
+			tess.font_shadow = bh2_font_blur( "Bahnschrift", 10 )
+			BH2.TextShadow(tess)
+
+			-- Ammo
+			local we = p:GetActiveWeapon()
+			if !IsValid(we) then
+				we = false
+			end
+
+			if we then
+				local bar = {
+					pos_x = w - dx() - b - bar_w,
+					pos_y = dy() + h - b - bar_h,
+					size_w = bar_w,
+					size_h = bar_h,
+					border = s(1.5),
+					color = "main",
+					progress = we:Clip1()/we:GetMaxClip1(),
+				}
+				BH2.ProgressBar(bar)
+				local tess = {
+					text = we:Clip1(),
+					font = bh2_font( "Bahnschrift", 36 ),
+					font_shadow = bh2_font_blur( "Bahnschrift", 36 ),
+					pos_x = w - dx() - b - (bar_w*0.15),
+					pos_y = dy() + h - b - bar_h - s(18),
+					color = "main",
+					sh = s(2),
+					align_x = 0.5,
+					align_y = 0.5,
+				}
+				BH2.TextShadow(tess)
+				tess.pos_y = dy() + h - b - bar_h - s(34)
+				tess.text = "AMMO"
+				tess.sh = s(1)
+				tess.font = bh2_font( "Bahnschrift", 12 )
+				tess.font_shadow = bh2_font_blur( "Bahnschrift", 12 )
+				BH2.TextShadow(tess)
+
+				-- Reserve
+				local tess = {
+					text = p:GetAmmoCount(we:GetPrimaryAmmoType()),
+					font = bh2_font( "Bahnschrift", 32 ),
+					font_shadow = bh2_font_blur( "Bahnschrift", 32 ),
+					pos_x = w - dx() - b - (bar_w*0.5),
+					pos_y = dy() + h - b - bar_h - s(18),
+					color = "main",
+					sh = s(2),
+					align_x = 0.5,
+					align_y = 0.5,
+				}
+				BH2.TextShadow(tess)
+				tess.pos_y = dy() + h - b - bar_h - s(32)
+				tess.text = "RESERVE"
+				tess.sh = s(1)
+				tess.font = bh2_font( "Bahnschrift", 10 )
+				tess.font_shadow = bh2_font_blur( "Bahnschrift", 10 )
+				BH2.TextShadow(tess)
+			end
 		end
 	end)
 	-- Don't draw the HL2 HUD
@@ -287,12 +449,28 @@ local function bh2menu(panel)
 	panel:ControlHelp("Should the HUD be enabled?")
 
 	panel:AddControl("slider", {
-		label = "HUD Scale",
-		command = "arccw_uc_apobjmult",
-		min = 1,
-		max = 10,
+		label = "Global Scale",
+		command = "bh2_scale",
+		type = "float",
+		min = .5,
+		max = 2,
 	})
-	panel:ControlHelp("Multiplier for damage dealt to objects while using 'Armor-piercing' rounds.")
+
+	panel:AddControl("slider", {
+		label = "Deadzone X",
+		command = "bh2_dead_x",
+		type = "float",
+		min = 0,
+		max = 0.5,
+	})
+
+	panel:AddControl("slider", {
+		label = "Deadzone Y",
+		command = "bh2_dead_y",
+		type = "float",
+		min = 0,
+		max = 0.5,
+	})
 
 	panel:AddControl("header", {
 		description = "Main Color"
@@ -304,6 +482,17 @@ local function bh2menu(panel)
 	color:SetConVarB( "bh2_col_main_b" )
 	color:SetConVarA( "bh2_col_main_a" )
 	panel:AddItem( color )
+
+	panel:AddControl("header", {
+		description = "Shadow Color"
+	})
+	local color2 = vgui.Create( "DColorMixer" )
+	color2:SetPalette( true )
+	color2:SetConVarR( "bh2_col_shad_r" )
+	color2:SetConVarG( "bh2_col_shad_g" )
+	color2:SetConVarB( "bh2_col_shad_b" )
+	color2:SetConVarA( "bh2_col_shad_a" )
+	panel:AddItem( color2 )
 end
 
 hook.Add("PopulateToolMenu", "BH2_MenuOptions", function()

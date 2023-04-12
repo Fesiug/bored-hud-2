@@ -140,10 +140,10 @@ do
 	local w, h = ScrW(), ScrH()
 	local cv_deadx, cv_deady = GetConVar("bh2_dead_x"), GetConVar("bh2_dead_y")
 	local function dx()
-		return w * (cv_deadx:GetFloat()) * 0.5
+		return math.Round(w * (cv_deadx:GetFloat()) * 0.5)
 	end
 	local function dy()
-		return h * (cv_deady:GetFloat()) * -0.5
+		return math.Round(h * (cv_deady:GetFloat()) * -0.5)
 	end
 	BH2.GetPalette = function(name, alpha)
 		assert( name, "GetPalette: No input!" )
